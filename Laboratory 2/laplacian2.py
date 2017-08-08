@@ -1,26 +1,12 @@
-# Only in the project as a reference...
-# No code from here is run in the case studies
-# All running code has been refactored into Main.py
-
-
-# import the networkx network analysis package
 import networkx as nx
 from itertools import product
 
-
-# import the plotting functionality from matplotlib
 import matplotlib.pyplot as plt
-
-# import Delaunay tesselation
 from scipy.spatial import Delaunay
-
-# import kmeans
 from scipy.cluster.vq import vq, kmeans
-
 import numpy as np
 import scipy as sp
 import random
-
 import platform
 import community
 import operator
@@ -28,8 +14,7 @@ import operator
 facebook = "facebook_combined.txt"
 amazon = "Amazon0301.txt"
 
-
-# Modularity taken from networkx source code...
+# Reference code for networkx from https://networkx.readthedocs.io/en/latest/_modules/networkx/algorithms/community/quality.html
 def modularity(G, communities, weight='weight'):
     r"""Returns the modularity of the given partition of the graph.
     Modularity is defined in [1]_ as
@@ -306,7 +291,7 @@ def read_default(graph):
     points = np.column_stack((x, y))
     dl = Delaunay(points)
     tri = dl.simplices
-
+    
     edges = np.zeros((2, 6 * len(tri)), dtype=int)
     # data = np.ones(6 * len(points))
     j = 0
@@ -340,21 +325,6 @@ def read_default(graph):
     return graph
 
 
-def plot_graph(graph, pos, fig_num):
-
-    label = dict()
-    label_pos = dict()
-    for i in range(graph.number_of_nodes()):
-        label[i] = i
-        label_pos[i] = pos[i][0]+0.02, pos[i][1]+0.02
-
-    fig = plt.figure(fig_num, figsize=(8, 8))
-    fig.clf()
-    nx.draw_networkx_nodes(graph, pos, node_size=40, hold=False)
-    nx.draw_networkx_edges(graph, pos, hold=True)
-    nx.draw_networkx_labels(graph, label_pos, label, font_size=10, hold=True)
-    fig.show()
-
 
 def count_edge_cuts(graph, w0, w1, w2, method):
     edge_cut_count = 0
@@ -374,6 +344,33 @@ def count_edge_cuts(graph, w0, w1, w2, method):
     print('Contained edges: ', edge_uncut_count)
     return edge_cut_count, edge_uncut_count
 
+
+
+def newman(G):
+    if len(G.nodes()) == 1:
+        return [G.nodes()]
+
+    def find_best_edge(G0):
+        eb = nx.edge_betweenness_centrality(G0)
+        eb_il = eb.items()
+        # eb_il.sort(key=lambda x: x[1], reverse=True)
+        eb_il_sorted = sorted(eb_il, key=lambda x: x[1], reverse=True)
+        return eb_il_sorted[0][0]
+
+    components = list(nx.connected_component_subgraphs(G))
+
+    while len(components) == 1:
+        G.remove_edge(*find_best_edge(G))
+        components = list(nx.connected_component_subgraphs(G))
+
+    result = [c.nodes() for c in components]
+
+    looper = 0
+    for c in components:
+        looper += 1
+        result.extend(newman(c))
+
+    return result
 
 def count_edge_cuts_from_list(graph, list_of_partitions, method):
     edge_cut_count = 0
@@ -455,48 +452,27 @@ def GraphCheck(graph):
     print("Maximum Degree Node ", max_degree)
     print("Minimum Degree Node ", min_degree)
     print("Average Degree Node ", ave_degree)
- 
-
-
-def girvan_newman(G):
-
-    if len(G.nodes()) == 1:
-        return [G.nodes()]
-
-    def find_best_edge(G0):
-        """
-        Networkx implementation of edge_betweenness
-        returns a dictionary. Make this into a list,
-        sort it and return the edge with highest betweenness.
-        """
-        eb = nx.edge_betweenness_centrality(G0)
-        eb_il = eb.items()
-        # eb_il.sort(key=lambda x: x[1], reverse=True)
-        eb_il_sorted = sorted(eb_il, key=lambda x: x[1], reverse=True)
-        return eb_il_sorted[0][0]
-
-    components = list(nx.connected_component_subgraphs(G))
-
-    while len(components) == 1:
-        G.remove_edge(*find_best_edge(G))
-        components = list(nx.connected_component_subgraphs(G))
-
-    result = [c.nodes() for c in components]
-
-    looper = 0
-    for c in components:
-        print("Call number: ", looper)
-        looper += 1
-        result.extend(girvan_newman(c))
-
-    return result
-
 
 def newman_eval(G):
-    comp = girvan_newman(G)
-    print("Newman's partition list ", len(comp))
+    comp = newman(G)
+    print("Newman's list ", len(comp))
     return comp
 
+
+def plot_graph(graph, pos, fig_num):
+
+    label = dict()
+    label_pos = dict()
+    for i in range(graph.number_of_nodes()):
+        label[i] = i
+        label_pos[i] = pos[i][0]+0.02, pos[i][1]+0.02
+
+    fig = plt.figure(fig_num, figsize=(8, 8))
+    fig.clf()
+    nx.draw_networkx_nodes(graph, pos, node_size=40, hold=False)
+    nx.draw_networkx_edges(graph, pos, hold=True)
+    nx.draw_networkx_labels(graph, label_pos, label, font_size=10, hold=True)
+    fig.show()
 
 def editsidenodes(graph, node, neighbours):
     with suppress(Exception):   # Needed if the edge was already removed.
